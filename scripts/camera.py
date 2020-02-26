@@ -3,7 +3,9 @@
 import rospy
 from sensor_msgs.msg import Image, CompressedImage
 
+import pickle
 import picamera
+import cv2
 import signal
 import numpy as np
 
@@ -25,17 +27,30 @@ class Stream():
         # Set up ros publisher to publish on img topic, using Image message
         self.pub_img = rospy.Publisher(self.topic_name_camera_image, Image, queue_size=1)
 
+        # Calibration
+        self.calibration_file = rospy.get_param("~calibration_file", None)
+        if self.calibration_file != None:
+            with open(self.calibration_file, 'rb') as f:
+                self.MAP1, self.MAP2 = pickle.load(f)
+
+    def undistort(self, img, balance=0.0, dim2=None, dim3=None):
+        undistorted_img = cv2.remap(img, self.MAP1, self.MAP2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        return undistorted_img
+
     # Called when new image is available
     def write(self, data):
-        np_arr = np.frombuffer(data, dtype=np.uint8)
         
         # Publish raw image
-        data_y = data[:RES[0]*RES[1]]
+        if self.calibration_file != None:
+            np_arr_undistorted = self.undistort(np.frombuffer(data[:RES[0]*RES[1]], dtype=np.uint8).reshape((RES[1], RES[0], 1)))
+            data_y = np_arr_undistorted.tobytes()
+        else:
+            data_y = data[:RES[0]*RES[1]]
         msg = Image()
         msg.header.stamp = rospy.Time.now()
         msg.width = RES[0]
         msg.height = RES[1]
-        msg.encoding = "8UC1"
+        msg.encoding = "mono8"
         msg.step = len(data_y) // RES[1]
         msg.data = data_y
         self.pub_img.publish(msg)
