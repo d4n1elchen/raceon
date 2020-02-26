@@ -27,6 +27,7 @@ class Stream():
 
     # Called when new image is available
     def write(self, data):
+        np_arr = np.frombuffer(data, dtype=np.uint8)
         
         # Publish raw image
         data_y = data[:RES[0]*RES[1]]
@@ -34,7 +35,7 @@ class Stream():
         msg.header.stamp = rospy.Time.now()
         msg.width = RES[0]
         msg.height = RES[1]
-        msg.encoding = "mono8"
+        msg.encoding = "8UC1"
         msg.step = len(data_y) // RES[1]
         msg.data = data_y
         self.pub_img.publish(msg)
