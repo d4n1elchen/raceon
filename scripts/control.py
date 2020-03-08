@@ -39,7 +39,9 @@ class Controller():
         self.ki = rospy.get_param("~ki", 0)
         self.kd = rospy.get_param("~kd", 0)
         self.turn_kp = rospy.get_param("~turn_kp", 1)
-        
+        self.turn_ki = rospy.get_param("~turn_ki", 0)
+        self.turn_kd = rospy.get_param("~turn_kd", 0)
+
         # Init PID
         self.pid = PID(P=self.kp, I=self.ki, D=self.kd)
 
@@ -110,9 +112,11 @@ class Controller():
             return self.steering_speed
 
     def decrease_speed_state_two_scan(self):
-        if self.break_cnt > 3: # disable break after 3 frame passed
+        if self.break_cnt > 6: # disable break after 3 frame passed
+            self.break_cnt += 1
             if self.state_d == 0:
-                self.break_cnt = 0 # enable break when back to straight
+                if self.break_cnt > 20: # enable break after certain cnt
+                    self.break_cnt = 0
                 return self.motor_speed
             else:
                 return self.steering_speed
@@ -138,8 +142,12 @@ class Controller():
         if(self.state_d != 1): # If there's one or more line, update the servo position (state 1 for no line)
             if(np.abs(error) > 150): # If it is turning, use turn kp
                 self.pid.setKp(self.turn_kp)
+                self.pid.setKi(self.turn_ki)
+                self.pid.setKd(self.turn_kd)
             else:
                 self.pid.setKp(self.kp)
+                self.pid.setKi(self.ki)
+                self.pid.setKd(self.kd)
             self.pid.update(error)
             self.servo_pos = self.pid.output
 

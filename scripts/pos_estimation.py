@@ -38,6 +38,10 @@ class PosEstimator():
         self.last_line_pos = self.camera_center
         self.avg_track_width = 0
         self.frame_cnt = 0
+
+        # Moving avg
+        self.window_size = 10
+        self.pos_hist = []
     
     def start(self):
         self.sub_camera = rospy.Subscriber(self.topic_name_camera_image, Image, self.image_callback)
@@ -63,6 +67,11 @@ class PosEstimator():
         pos_err = line_pos - self.camera_center
         
         rospy.loginfo("Estimated line_pos = {:d} (Car pos = {:d}), state_u = {:d}, state_d = {:d}".format(pos_err, -pos_err, state_u, state_d))
+
+        self.pos_hist.append(pos_err)
+        if len(self.pos_hist) > self.window_size:
+            self.pos_hist.pop(0)
+        pos_filtered = np.average(self.pos_hist)
         
         pos_msg = Pose()
         pos_msg.position.x = -pos_err
@@ -123,7 +132,7 @@ class PosEstimator():
         self.pub_pos_track.publish(track_msg)
 
         # Check upper scan line
-        if line_left_u and line_right_u:
+        if line_left_u and line_right_u: #and ((line_right_u - line_left-u) > (self.track_width // 2)):
             state_u = 0
 
         elif line_left_u and not line_right_u:
@@ -137,11 +146,16 @@ class PosEstimator():
 
         # Evaluate the line position
         if line_left_d and line_right_d:
-            line_pos    = (line_left_d + line_right_d ) // 2
+            if (line_right_d - line_left_d) > (self.track_width // 2):
+                print(line_right_d - line_left_d)
+                line_pos    = (line_left_d + line_right_d ) // 2
+                state_d = 0
+            else:
+                state_d = 1
+
             if (line_right_d - line_left_d) > self.avg_track_width / 2:
                 self.avg_track_width = (self.avg_track_width * self.frame_cnt + (line_right_d - line_left_d)) / self.frame_cnt
                 rospy.loginfo("Average track width: {:f}".format(self.avg_track_width))
-            state_d = 0
                     
         elif line_left_d and not line_right_d:
             line_pos    = line_left_d + int(self.track_width / 2)
@@ -154,6 +168,10 @@ class PosEstimator():
         else:
             state_d = 1
             rospy.loginfo("No track line")
+
+        if np.abs(line_pos - self.last_line_pos) > (self.track_width // 2):
+            line_pos = self.last_line_pos
+            state_d = 1
         
         self.last_line_pos = line_pos
         return line_pos, state_u, state_d

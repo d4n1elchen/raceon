@@ -52,3 +52,6 @@ CATKIN_IGNORE
 
 # IPython cache folder
 .ipynb_checkpoints
+
+# Vim swap file
+*.swp
