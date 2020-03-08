@@ -2,13 +2,13 @@
     <arg name="speed" default="0"/>
     <arg name="steering_speed" default="0"/>
     
-    <arg name="kp" default="4" />
-    <arg name="ki" default="1" />
+    <arg name="kp" default="5" />
+    <arg name="ki" default="1.2" />
     <arg name="kd" default="0.4" />
 
-    <arg name="turn_kp" default="9" />
-    <arg name="turn_ki" default="0" />
-    <arg name="turn_kd" default="0.5" />
+    <arg name="turn_kp" default="10" />
+    <arg name="turn_ki" default="20" />
+    <arg name="turn_kd" default="0.1" />
     
     <group ns="raceon">
         <param name="topic_name_camera_image" value="camera/image" />
@@ -17,8 +17,13 @@
         <param name="topic_name_position_track" value="position/track" />
         <param name="topic_name_manual_mode" value="control/manual_mode" />
         <param name="topic_name_control" value="control" />
+        <param name="topic_name_encoder" value="encoder" />
 
 	<!--node pkg="rosbag" type="record" name="record" output="screen" args="/raceon/control /raceon/position/pose"/-->
+
+        <node pkg="raceon" name="actuation" type="actuation.py" output="log" />
+
+        <node pkg="raceon" name="encoder" type="encoder.py" output="log" />
 
         <node pkg="raceon" name="camera" type="camera.py" output="screen">
             <param name="~calibration_file" value="$(find raceon)/calibration/undistort_params.pkl" />
@@ -49,7 +54,5 @@
             <param name="~turn_ki" value="$(arg turn_ki)" />
             <param name="~turn_kd" value="$(arg turn_kd)" />
         </node>
-
-        <node pkg="raceon" name="actuation" type="actuation.py" output="log" />
     </group>
 </launch>

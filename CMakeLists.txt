@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   EstState.msg
+  Encoder.msg
   TrackPosition.msg
   AckermannDrive.msg
 )
